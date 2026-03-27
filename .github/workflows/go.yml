@@ -74,7 +74,11 @@ jobs:
         if: ${{ !matrix.native }}
         run: |
           sudo dpkg --add-architecture ${{ matrix.dpkg_arch }}
-          # ports.ubuntu.com carries non-x86 packages; the default Azure mirror does not
+          # Restrict existing sources to amd64 so apt doesn't try to fetch
+          # ppc64el/s390x packages from mirrors that don't carry them
+          sudo sed -i 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || \
+          sudo sed -i 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list 2>/dev/null || true
+          # ports.ubuntu.com carries non-x86 packages
           echo "deb [arch=${{ matrix.dpkg_arch }}] http://ports.ubuntu.com/ubuntu-ports noble main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/ports-${{ matrix.dpkg_arch }}.list
           echo "deb [arch=${{ matrix.dpkg_arch }}] http://ports.ubuntu.com/ubuntu-ports noble-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/ports-${{ matrix.dpkg_arch }}.list
           echo "deb [arch=${{ matrix.dpkg_arch }}] http://ports.ubuntu.com/ubuntu-ports noble-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/ports-${{ matrix.dpkg_arch }}.list
