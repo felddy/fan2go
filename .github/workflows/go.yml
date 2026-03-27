@@ -44,14 +44,17 @@ jobs:
           - goarch: amd64
             runner: ubuntu-latest
             native: true
+            make_target: build
 
           - goarch: arm64
             runner: ubuntu-24.04-arm
             native: true
+            make_target: build
 
           - goarch: ppc64le
             runner: ubuntu-latest
             native: false
+            make_target: build-cross
             cc: powerpc64le-linux-gnu-gcc
             dpkg_arch: ppc64el
             cross_pkg: crossbuild-essential-ppc64el
@@ -60,6 +63,7 @@ jobs:
           - goarch: s390x
             runner: ubuntu-latest
             native: false
+            make_target: build-cross
             cc: s390x-linux-gnu-gcc
             dpkg_arch: s390x
             cross_pkg: crossbuild-essential-s390x
@@ -68,6 +72,7 @@ jobs:
           - goarch: riscv64
             runner: ubuntu-latest
             native: false
+            make_target: build-cross
             cc: riscv64-linux-gnu-gcc
             dpkg_arch: riscv64
             cross_pkg: crossbuild-essential-riscv64
@@ -112,35 +117,14 @@ jobs:
           GOARCH: ${{ matrix.goarch }}
         run: |
           OUTPUT_BIN="dist/fan2go-linux-${{ matrix.goarch }}"
-          if [ "${{ matrix.native }}" = "true" ]; then
-            make build GOOS=linux OARCH=${{ matrix.goarch }} GOFLAGS="-buildmode=exe" OUTPUT_BIN="${OUTPUT_BIN}"
-            make build-no-nvml GOOS=linux OARCH=${{ matrix.goarch }} GOFLAGS="-buildmode=exe" OUTPUT_BIN="${OUTPUT_BIN}-no-nvml"
-            "${OUTPUT_BIN}" version
-            "${OUTPUT_BIN}-no-nvml" version
-          else
-            go build \
-              -ldflags "-w -s \
-                -X fan2go/cmd/global.Version=${VERSION} \
-                -X github.com/markusressel/fan2go/cmd/global.Version=${VERSION} \
-                -X fan2go/cmd/global.Commit=${GIT_REV} \
-                -X github.com/markusressel/fan2go/cmd/global.Commit=${GIT_REV} \
-                -X fan2go/cmd/global.Date=${DATE} \
-                -X github.com/markusressel/fan2go/cmd/global.Date=${DATE}" \
-              -a -tags netgo \
-              -o "${OUTPUT_BIN}" main.go
-            go build \
-              -ldflags "-w -s \
-                -X fan2go/cmd/global.Version=${VERSION} \
-                -X github.com/markusressel/fan2go/cmd/global.Version=${VERSION} \
-                -X fan2go/cmd/global.Commit=${GIT_REV} \
-                -X github.com/markusressel/fan2go/cmd/global.Commit=${GIT_REV} \
-                -X fan2go/cmd/global.Date=${DATE} \
-                -X github.com/markusressel/fan2go/cmd/global.Date=${DATE}" \
-              -a -tags netgo,disable_nvml \
-              -o "${OUTPUT_BIN}-no-nvml" main.go
-          fi
+          make ${{ matrix.make_target }}          OUTPUT_BIN="${OUTPUT_BIN}"
+          make ${{ matrix.make_target }}-no-nvml  OUTPUT_BIN="${OUTPUT_BIN}-no-nvml"
           file "${OUTPUT_BIN}"
           file "${OUTPUT_BIN}-no-nvml"
+          if [ "${{ matrix.native }}" = "true" ]; then
+            "${OUTPUT_BIN}" version
+            "${OUTPUT_BIN}-no-nvml" version
+          fi
 
       - name: Nvml check (amd64 only)
         if: matrix.goarch == 'amd64'
