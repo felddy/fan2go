@@ -74,14 +74,21 @@ jobs:
         if: ${{ !matrix.native }}
         run: |
           sudo dpkg --add-architecture ${{ matrix.dpkg_arch }}
-          # ports.ubuntu.com carries ppc64el and s390x packages.
-          # Use DEB822 format with explicit Architectures field so apt fetches
-          # the foreign arch only from ports, not from the default mirrors.
-          printf 'Types: deb\nURIs: http://ports.ubuntu.com/ubuntu-ports\nSuites: noble noble-updates noble-security\nComponents: main restricted universe multiverse\nArchitectures: %s\n' "${{ matrix.dpkg_arch }}" | sudo tee /etc/apt/sources.list.d/ports-${{ matrix.dpkg_arch }}.sources
-          # The default mirrors don't carry ppc64el/s390x; treat those 404s as non-fatal
-          sudo apt-get update -o APT::Update::Error-Mode=any
+          # Replace the runner's ubuntu.sources with one pinned to amd64 only.
+          # The default file uses a mirrorlist URI that also serves ppc64el/s390x
+          # requests to security.ubuntu.com, which returns 404 for those arches.
+          sudo tee /etc/apt/sources.list.d/ubuntu.sources > /dev/null << 'EOF'
+          Types: deb
+          URIs: http://azure.archive.ubuntu.com/ubuntu
+          Suites: noble noble-updates noble-backports noble-security
+          Components: main restricted universe multiverse
+          Architectures: amd64
+          Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg
+          EOF
+          # Add ports.ubuntu.com for the foreign arch
+          printf 'Types: deb\nURIs: http://ports.ubuntu.com/ubuntu-ports\nSuites: noble noble-updates noble-security\nComponents: main restricted universe multiverse\nArchitectures: %s\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n' "${{ matrix.dpkg_arch }}" | sudo tee /etc/apt/sources.list.d/ports-${{ matrix.dpkg_arch }}.sources
+          sudo apt-get update
           sudo apt-get install -y ${{ matrix.cross_pkg }} ${{ matrix.libsensors_pkg }}
-
       - name: Checkout the repository
         uses: actions/checkout@v6
 
