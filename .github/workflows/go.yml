@@ -74,6 +74,10 @@ jobs:
         if: ${{ !matrix.native }}
         run: |
           sudo dpkg --add-architecture ${{ matrix.dpkg_arch }}
+          # ports.ubuntu.com carries non-x86 packages; the default Azure mirror does not
+          echo "deb [arch=${{ matrix.dpkg_arch }}] http://ports.ubuntu.com/ubuntu-ports noble main restricted universe multiverse" | sudo tee /etc/apt/sources.list.d/ports-${{ matrix.dpkg_arch }}.list
+          echo "deb [arch=${{ matrix.dpkg_arch }}] http://ports.ubuntu.com/ubuntu-ports noble-updates main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/ports-${{ matrix.dpkg_arch }}.list
+          echo "deb [arch=${{ matrix.dpkg_arch }}] http://ports.ubuntu.com/ubuntu-ports noble-security main restricted universe multiverse" | sudo tee -a /etc/apt/sources.list.d/ports-${{ matrix.dpkg_arch }}.list
           sudo apt-get update
           sudo apt-get install -y ${{ matrix.cross_pkg }} ${{ matrix.libsensors_pkg }}
 
