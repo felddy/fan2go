@@ -114,6 +114,9 @@ jobs:
           OUTPUT_BIN="dist/fan2go-linux-${{ matrix.goarch }}"
           if [ "${{ matrix.native }}" = "true" ]; then
             make build GOOS=linux OARCH=${{ matrix.goarch }} GOFLAGS="-buildmode=exe" OUTPUT_BIN="${OUTPUT_BIN}"
+            make build-no-nvml GOOS=linux OARCH=${{ matrix.goarch }} GOFLAGS="-buildmode=exe" OUTPUT_BIN="${OUTPUT_BIN}-no-nvml"
+            "${OUTPUT_BIN}" version
+            "${OUTPUT_BIN}-no-nvml" version
           else
             go build \
               -ldflags "-w -s \
@@ -125,18 +128,27 @@ jobs:
                 -X github.com/markusressel/fan2go/cmd/global.Date=${DATE}" \
               -a -tags netgo \
               -o "${OUTPUT_BIN}" main.go
+            go build \
+              -ldflags "-w -s \
+                -X fan2go/cmd/global.Version=${VERSION} \
+                -X github.com/markusressel/fan2go/cmd/global.Version=${VERSION} \
+                -X fan2go/cmd/global.Commit=${GIT_REV} \
+                -X github.com/markusressel/fan2go/cmd/global.Commit=${GIT_REV} \
+                -X fan2go/cmd/global.Date=${DATE} \
+                -X github.com/markusressel/fan2go/cmd/global.Date=${DATE}" \
+              -a -tags netgo,disable_nvml \
+              -o "${OUTPUT_BIN}-no-nvml" main.go
           fi
           file "${OUTPUT_BIN}"
+          file "${OUTPUT_BIN}-no-nvml"
 
-      - name: Build no-nvml variant and run nvml check (amd64 only)
+      - name: Nvml check (amd64 only)
         if: matrix.goarch == 'amd64'
         run: |
-          make build-no-nvml GOOS=linux OARCH=amd64 GOFLAGS="-buildmode=exe" OUTPUT_BIN="dist/fan2go-linux-amd64-no-nvml"
-          ./dist/fan2go-linux-amd64-no-nvml version
           set -x
           # make sure the no-nvml build *really* doesn't use nvml
           # ("nvml" is printed by objdump at least once because of the filename,
-          #  but if nvml is linked, it has hundreds of occurences)
+          #  but if nvml is linked, it has hundreds of occurrences)
           test `objdump -T ./dist/fan2go-linux-amd64-no-nvml | grep -c nvml` -lt 3
           # .. and that the regular build *does* have symbols with "nvml" in it
           test `objdump -T ./dist/fan2go-linux-amd64 | grep -c nvml` -ge 3
@@ -167,8 +179,12 @@ jobs:
             dist/fan2go-linux-amd64
             dist/fan2go-linux-amd64-no-nvml
             dist/fan2go-linux-arm64
+            dist/fan2go-linux-arm64-no-nvml
             dist/fan2go-linux-ppc64le
+            dist/fan2go-linux-ppc64le-no-nvml
             dist/fan2go-linux-s390x
+            dist/fan2go-linux-s390x-no-nvml
             dist/fan2go-linux-riscv64
+            dist/fan2go-linux-riscv64-no-nvml
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
