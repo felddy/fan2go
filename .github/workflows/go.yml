@@ -74,16 +74,12 @@ jobs:
         if: ${{ !matrix.native }}
         run: |
           sudo dpkg --add-architecture ${{ matrix.dpkg_arch }}
-          # The runner's existing sources (DEB822 format) don't carry ppc64el/s390x.
-          # Pin all existing sources to amd64 only, then add ports.ubuntu.com for the foreign arch.
-          # Ubuntu 24.04 uses DEB822 format (.sources files) not the old sources.list format.
-          sudo sed -i '/^Types:/a Architectures: amd64' /etc/apt/sources.list.d/ubuntu.sources 2>/dev/null || true
-          sudo sed -i 's/^deb /deb [arch=amd64] /' /etc/apt/sources.list 2>/dev/null || true
-          # Also pin any other .list files (e.g. microsoft repos) to amd64
-          sudo find /etc/apt/sources.list.d/ -name "*.list" -exec sudo sed -i 's/^deb /deb [arch=amd64] /' {} \;
-          # ports.ubuntu.com carries ppc64el and s390x packages
+          # ports.ubuntu.com carries ppc64el and s390x packages.
+          # Use DEB822 format with explicit Architectures field so apt fetches
+          # the foreign arch only from ports, not from the default mirrors.
           printf 'Types: deb\nURIs: http://ports.ubuntu.com/ubuntu-ports\nSuites: noble noble-updates noble-security\nComponents: main restricted universe multiverse\nArchitectures: %s\n' "${{ matrix.dpkg_arch }}" | sudo tee /etc/apt/sources.list.d/ports-${{ matrix.dpkg_arch }}.sources
-          sudo apt-get update
+          # The default mirrors don't carry ppc64el/s390x; treat those 404s as non-fatal
+          sudo apt-get update -o APT::Update::Error-Mode=any
           sudo apt-get install -y ${{ matrix.cross_pkg }} ${{ matrix.libsensors_pkg }}
 
       - name: Checkout the repository
