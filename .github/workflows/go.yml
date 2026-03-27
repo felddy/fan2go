@@ -65,6 +65,14 @@ jobs:
             cross_pkg: crossbuild-essential-s390x
             libsensors_pkg: libsensors-dev:s390x
 
+          - goarch: riscv64
+            runner: ubuntu-latest
+            native: false
+            cc: riscv64-linux-gnu-gcc
+            dpkg_arch: riscv64
+            cross_pkg: crossbuild-essential-riscv64
+            libsensors_pkg: libsensors-dev:riscv64
+
     steps:
       - name: Install libsensors-dev (native)
         if: matrix.native
@@ -161,5 +169,6 @@ jobs:
             dist/fan2go-linux-arm64
             dist/fan2go-linux-ppc64le
             dist/fan2go-linux-s390x
+            dist/fan2go-linux-riscv64
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
