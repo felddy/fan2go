@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := build
-.PHONY: help test build build-ppc64le build-s390x deploy run clean
+.PHONY: help test build build-ppc64le build-s390x build-riscv64 deploy run clean
 
 GO_FLAGS   ?=
 NAME       := fan2go
@@ -59,6 +59,18 @@ build-s390x: ## Builds for linux/s390x with CGO cross-compilation (requires cros
 	-X ${NAME}/cmd/global.Date=${DATE} \
 	-X ${PACKAGE}/cmd/global.Date=${DATE}" \
 	-a -tags netgo -o "dist/fan2go-linux-s390x" main.go
+
+build-riscv64: ## Builds for linux/riscv64 with CGO cross-compilation (requires crossbuild-essential-riscv64 and libsensors-dev:riscv64)
+	CGO_ENABLED=1 CC=riscv64-linux-gnu-gcc GOOS=linux GOARCH=riscv64 \
+	go build ${GO_FLAGS} \
+	-ldflags "-w -s \
+	-X ${NAME}/cmd/global.Version=${VERSION} \
+	-X ${PACKAGE}/cmd/global.Version=${VERSION} \
+	-X ${NAME}/cmd/global.Commit=${GIT_REV} \
+	-X ${PACKAGE}/cmd/global.Commit=${GIT_REV} \
+	-X ${NAME}/cmd/global.Date=${DATE} \
+	-X ${PACKAGE}/cmd/global.Date=${DATE}" \
+	-a -tags netgo -o "dist/fan2go-linux-riscv64" main.go
 
 run: build
 	./${OUTPUT_BIN}
